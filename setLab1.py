@@ -1,16 +1,17 @@
 import socket
 import argparse
 from string import Template
-import http-parser
+
+STATUSES = ['200', '404', '300', '500']
 
 parser_arg = argparse.AgrumentParser()
-http_parser = HttpParser()
 
 def init_parse_args():
-    parser_arg.add_argument('h', 'host', type=str, help='this is port')
-    parser_arg.add_argument('a', 'accept', help='accepted type of content')
-    parser_arg.add_argument('cl', 'content_length', help='the length of content')
-    parser_arg.add_argument('al', 'accept_language', help='the language of content')
+    parser_arg.add_argument('-H', 'host', type=str, help='this is port')
+    parser_arg.add_argument('-A', 'accept', type=str, help='accepted type of content')
+    parser_arg.add_argument('-CL', 'content_length', type=int, help='the length of content')
+    parser_arg.add_argument('-AL', 'accept_language', type=str, help='the language of content')
+    parser_arg.add_argument('-B', 'body', nargs='+', help='body of th request')
     args = parser_arg.parse_args()
     return args
    
@@ -21,6 +22,28 @@ class ServerAdress:
        self.host = host
        self.port = port
 
+class HTTPRequestParser:
+    
+    def __init__(self, data):
+        self.data = data
+    
+    
+    def parse_data(self):
+        data_list = self.data.split("\r\n\r\n")
+        self.head = data_list[0]
+        self.body = None
+        if len(data_list) != 1:
+            self.body = data_list[1]
+        status_code = self.parse_head(self.head)
+        return (status_code, self.body)
+    
+    def parse_head(self):
+        for status in STATUSES:
+            if status in self.head:
+                return status
+                
+                
+                
      
 class ClientSocket:
 
@@ -30,7 +53,6 @@ class ClientSocket:
         else:
             self.sock = sock
         
-    
 
     def connect(self, server_adress):
         self.sock.connect((server_adress.host, server_adress.port)) 
@@ -48,10 +70,6 @@ class ClientSocket:
                 break
             response += data
         return response
-
-
-    def ger_error_description(data):
-        
     
     
     def close(self):
@@ -74,7 +92,7 @@ class HTTPRequest:
         return request
 
 
-class ClientRequestCustomHeader:
+class HTTPCustomHeader:
 
     def __init__(self, host='localhost', accept='text/html', content_length=212, accept_language='en-US'):
         self.host = host
@@ -101,14 +119,19 @@ class HTTPBody:
     @classmethod
     def load_from_file(cls, path):
         return(open(path, 'r').read())
-        
+
 
 def main():
+    init_parse_args()
     server_address = ServerAdress()
     client_socket = ClientSocket()
     client_socket.connect(server_address)
+    http_body = HTTPBody().get_from_commandline()
+    http_header = HTTPCustomHeader
     client_socket.send('GET / HTTP/1.0\r\nHost: localhost\r\n\r\n')
-    print(client_socket.receive())
+    response = client_socket.receive()
+    print(response)
+    print(client_socket.parse_data(response))
     client_socket.close()
 
 
